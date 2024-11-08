@@ -1,0 +1,626 @@
+# Load necessary libraries
+library(ggplot2)
+library(dendextend)
+library(cluster)
+
+# Your data: Convert the matrix into a data frame
+data <- data.frame(
+  Scenario = c("Best Management Scenarios", 
+               "Expansion of Agricultural Land Future-1", 
+               "Expansion of Agricultural Land Future-2", 
+               "High Living Standards", 
+               "Higher population growth rate", 
+               "Climate Change SSP2_4.5", 
+               "Climate Change SSP5_8.5", 
+               "Medium population growth rate", 
+               "Moderate Temperature in Future", 
+               "HP+HLS", 
+               "Change in Crop Pattern", 
+               "Reference"),
+  `2018` = c(2.2, 2.2, 2.2, 2.2, 2.2, 2.2, 2.2, 2.2, 2.2, 2.2, 2.2, 2.2),
+  `2019` = c(0.6, 0.8, 1.1, 9.7, 0.7, 32.2, 40.2, 0.7, 3.0, 10.6, 22.1, 0.7),
+  `2020` = c(2.8, 3.8, 5.7, 34.5, 3.0, 35.9, 43.9, 2.9, 0.7, 37.7, 26.7, 2.9),
+  `2021` = c(0.7, 1.2, 2.0, 16.8, 0.7, 32.3, 40.3, 0.7, 3.1, 17.8, 23.0, 0.7),
+  `2022` = c(0.9, 1.6, 2.8, 23.2, 1.0, 32.6, 40.6, 1.0, 1.0, 24.5, 23.8, 1.0),
+  `2023` = c(0.7, 1.6, 3.1, 24.6, 0.8, 32.3, 40.3, 0.8, 3.2, 25.6, 24.1, 0.7),
+  `2024` = c(2.0, 3.8, 13.7, 48.0, 2.2, 33.9, 41.9, 2.1, 0.8, 50.4, 34.7, 2.1),
+  `2025` = c(2.9, 8.4, 25.4, 61.9, 8.3, 36.2, 44.2, 3.2, 2.2, 70.5, 46.4, 3.1),
+  `2026` = c(0.7, 2.2, 7.3, 46.7, 1.0, 32.4, 76.4, 0.8, 6.0, 48.0, 28.3, 0.8),
+  `2027` = c(0.7, 2.4, 10.8, 227.1, 3.2, 32.5, 76.5, 0.8, 3.6, 230.6, 40.3, 0.8),
+  `2028` = c(3.1, 13.0, 41.5, 339.8, 20.6, 36.6, 80.6, 7.5, 0.9, 360.6, 71.0, 3.2),
+  `2029` = c(2.1, 8.1, 40.0, 323.8, 20.7, 34.2, 78.2, 6.0, 11.1, 344.8, 69.5, 2.2),
+  `2030` = c(3.1, 16.4, 56.3, 372.4, 101.7, 36.6, 80.6, 13.0, 2.8, 474.4, 85.8, 3.3),
+  `2031` = c(1.1, 3.7, 83.3, 297.4, 209.7, 32.7, 76.7, 4.5, 22.1, 507.4, 112.8, 1.1),
+  `2032` = c(0.8, 3.6, 200.6, 298.8, 220.2, 32.4, 76.4, 5.6, 194.8, 519.2, 230.1, 0.8),
+  `2033` = c(1.1, 5.1, 234.1, 476.0, 255.2, 32.8, 76.8, 142.2, 132.4, 731.5, 263.6, 1.1),
+  `2034` = c(0.8, 74.2, 245.6, 506.1, 269.0, 32.5, 76.5, 156.8, 187.3, 775.3, 275.1, 0.9),
+  `2035` = c(0.8, 129.4, 269.6, 525.8, 301.8, 32.5, 76.5, 170.9, 137.1, 827.9, 299.1, 0.9),
+  `2036` = c(2.2, 208.0, 395.1, 646.9, 457.9, 123.9, 167.9, 243.9, 228.2, 1105.0, 424.6, 57.7),
+  `2037` = c(0.9, 149.5, 325.9, 566.4, 385.2, 137.6, 181.6, 200.6, 154.2, 951.9, 355.4, 103.7),
+  `2038` = c(2.2, 233.6, 475.6, 696.0, 800.9, 201.0, 245.0, 281.3, 248.3, 1497.2, 505.1, 166.9),
+  `2039` = c(2.2, 246.6, 527.9, 722.3, 922.1, 210.0, 254.0, 302.0, 230.5, 1644.6, 557.4, 175.2),
+  `2040` = c(1.2, 199.9, 467.0, 650.8, 855.3, 169.9, 213.9, 261.6, 193.4, 1506.4, 496.5, 136.8),
+  `2041` = c(1.2, 213.1, 513.9, 673.2, 934.2, 178.2, 222.2, 281.6, 202.8, 1607.7, 543.4, 144.9),
+  `2042` = c(29.5, 226.6, 563.2, 696.0, 1017.1, 186.4, 230.4, 393.1, 212.4, 1713.4, 592.7, 153.3),
+  `2043` = c(94.0, 225.3, 592.0, 699.8, 1068.5, 183.6, 227.6, 509.0, 299.4, 1768.6, 621.5, 150.1),
+  `2044` = c(99.4, 239.5, 665.4, 723.7, 1159.9, 192.1, 236.1, 548.7, 375.3, 1883.9, 694.9, 158.8),
+  `2045` = c(163.4, 331.6, 1057.2, 901.8, 1434.1, 260.1, 304.1, 766.2, 393.7, 2336.1, 1086.7, 226.2),
+  `2046` = c(125.1, 283.9, 895.3, 799.0, 1392.1, 221.7, 265.7, 671.0, 412.5, 2191.4, 924.8, 188.5),
+  `2047` = c(121.3, 283.8, 1056.0, 802.3, 1462.3, 219.6, 263.6, 684.3, 431.8, 2264.8, 1085.5, 186.1),
+  `2048` = c(187.8, 385.3, 1748.4, 1001.9, 1751.9, 290.5, 334.5, 912.7, 451.4, 2754.1, 1777.9, 255.4),
+  `2049` = c(196.1, 544.1, 1925.0, 1036.8, 1870.7, 362.3, 406.3, 964.9, 472.1, 2907.7, 1954.5, 273.6),
+  `2050` = c(231.3, 718.9, 2333.0, 1148.3, 2074.0, 587.7, 631.7, 1092.1, 494.9, 3222.5, 2362.5, 546.3),
+  `2051` = c(240.9, 751.8, 2532.6, 1185.7, 2207.5, 609.3, 653.3, 1148.3, 519.1, 3393.5, 2562.1, 569.6),
+  `2052` = c(221.9, 700.9, 2518.5, 1146.3, 2264.2, 560.5, 604.5, 1133.1, 544.2, 3410.8, 2548.0, 521.0),
+  `2053` = c(260.9, 821.6, 2970.8, 1262.9, 2497.2, 658.9, 702.9, 1266.6, 569.8, 3760.3, 3000.3, 617.7),
+  `2054` = c(271.2, 857.8, 3215.4, 1302.8, 2655.3, 685.7, 729.7, 1328.8, 596.5, 3958.4, 3244.9, 642.5),
+  `2055` = c(219.4, 615.8, 2651.8, 1084.7, 2528.6, 478.2, 522.2, 1141.5, 625.6, 3613.5, 2681.3, 442.1),
+  `2056` = c(321.1, 647.9, 2905.9, 1125.3, 2695.4, 498.6, 542.6, 1208.0, 655.3, 3821.0, 2935.4, 462.5),
+  `2057` = c(356.2, 715.9, 3289.7, 1202.4, 2911.8, 550.7, 594.7, 1312.4, 685.6, 4114.4, 3319.2, 512.8),
+  `2058` = c(559.9, 1012.6, 4384.9, 1471.4, 3407.0, 788.3, 832.3, 1600.5, 716.7, 4878.6, 4414.4, 747.5),
+  `2059` = c(391.1, 786.6, 3885.0, 1288.1, 3298.9, 599.9, 643.9, 1457.4, 748.4, 4587.3, 3914.5, 563.3),
+  `2060` = c(535.1, 999.6, 4760.1, 1483.1, 3723.4, 770.7, 814.7, 1676.8, 780.8, 5206.7, 4789.6, 730.9)
+)
+
+# Remove the Scenario column for clustering
+data_matrix <- as.matrix(data[, -1])
+
+# Normalize the data to ensure fair clustering
+data_matrix <- scale(data_matrix)
+
+# Calculate the distance matrix
+dist_matrix <- dist(data_matrix, method = "euclidean")
+
+# Perform hierarchical clustering
+hc <- hclust(dist_matrix, method = "ward.D2")
+
+# Plot the dendrogram
+dend <- as.dendrogram(hc)
+dend <- color_branches(dend, k = 4) # Coloring branches for better visual interpretation
+plot(dend, main = "Dendrogram of Scenarios", ylab = "Height", xlab = "Scenarios", sub = "")
+
+# Save dendrogram to a file (optional)
+png("dendrogram.png")
+plot(dend, main = "Dendrogram of Scenarios", ylab = "Height", xlab = "Scenarios", sub = "")
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries Line Graph
+library(ggplot2)
+library(reshape2)
+
+# Data setup
+years <- 2018:2060
+change_in_crop_pattern <- c(2.2, 22.1, 26.7, 23.0, 23.8, 24.1, 34.7, 46.4, 28.3, 40.3, 71.0, 69.5, 85.8, 112.8, 230.1, 
+                            263.6, 275.1, 299.1, 424.6, 355.4, 505.1, 557.4, 496.5, 543.4, 592.7, 621.5, 694.9, 1086.7, 
+                            924.8, 1085.5, 1777.9, 1954.5, 2362.5, 2562.1, 2548.0, 3000.3, 3244.9, 2681.3, 2935.4, 
+                            3319.2, 4414.4, 3914.5, 4789.6)
+reference <- c(2.2, 0.7, 2.9, 0.7, 1.0, 0.7, 2.1, 3.1, 0.8, 0.8, 3.2, 2.2, 3.3, 1.1, 0.8, 1.1, 0.9, 0.9, 57.7, 103.7, 
+               166.9, 175.2, 136.8, 144.9, 153.3, 150.1, 158.8, 226.2, 188.5, 186.1, 255.4, 273.6, 546.3, 569.6, 521.0, 
+               617.7, 642.5, 442.1, 462.5, 512.8, 747.5, 563.3, 730.9)
+
+# Combine data into a data frame
+data <- data.frame(Year = years, Change_in_Crop_Pattern = change_in_crop_pattern, Reference = reference)
+
+# Reshape data for plotting
+data_melted <- melt(data, id.vars = "Year")
+
+# Plot the data
+ggplot(data_melted, aes(x = Year, y = value, color = variable)) + 
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Comparison of Scenarios: Change in Crop Pattern vs. Reference",
+       x = "Year",
+       y = "Values",
+       color = "Scenario") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+
+
+
+
+
+
+
+
+
+# Load necessary libraries Area Graph
+library(ggplot2)
+library(reshape2)
+
+# Data setup
+years <- 2018:2060
+change_in_crop_pattern <- c(2.2, 22.1, 26.7, 23.0, 23.8, 24.1, 34.7, 46.4, 28.3, 40.3, 71.0, 69.5, 85.8, 112.8, 230.1, 
+                            263.6, 275.1, 299.1, 424.6, 355.4, 505.1, 557.4, 496.5, 543.4, 592.7, 621.5, 694.9, 1086.7, 
+                            924.8, 1085.5, 1777.9, 1954.5, 2362.5, 2562.1, 2548.0, 3000.3, 3244.9, 2681.3, 2935.4, 
+                            3319.2, 4414.4, 3914.5, 4789.6)
+reference <- c(2.2, 0.7, 2.9, 0.7, 1.0, 0.7, 2.1, 3.1, 0.8, 0.8, 3.2, 2.2, 3.3, 1.1, 0.8, 1.1, 0.9, 0.9, 57.7, 103.7, 
+               166.9, 175.2, 136.8, 144.9, 153.3, 150.1, 158.8, 226.2, 188.5, 186.1, 255.4, 273.6, 546.3, 569.6, 521.0, 
+               617.7, 642.5, 442.1, 462.5, 512.8, 747.5, 563.3, 730.9)
+
+# Combine data into a data frame
+data <- data.frame(Year = years, Change_in_Crop_Pattern = change_in_crop_pattern, Reference = reference)
+
+# Reshape data for plotting
+data_melted <- melt(data, id.vars = "Year")
+
+# Plot the data using an area graph
+ggplot(data_melted, aes(x = Year, y = value, fill = variable)) + 
+  geom_area(position = "identity", alpha = 0.5) +
+  labs(title = "Comparison of Scenarios: Change in Crop Pattern vs. Reference",
+       x = "Years",
+       y = "Unmet Demand (MCM)",
+       fill = "Scenario") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries (Bar Graph)
+library(ggplot2)
+library(reshape2)
+
+# Data setup
+years <- 2018:2060
+change_in_crop_pattern <- c(2.2, 22.1, 26.7, 23.0, 23.8, 24.1, 34.7, 46.4, 28.3, 40.3, 71.0, 69.5, 85.8, 112.8, 230.1, 
+                            263.6, 275.1, 299.1, 424.6, 355.4, 505.1, 557.4, 496.5, 543.4, 592.7, 621.5, 694.9, 1086.7, 
+                            924.8, 1085.5, 1777.9, 1954.5, 2362.5, 2562.1, 2548.0, 3000.3, 3244.9, 2681.3, 2935.4, 
+                            3319.2, 4414.4, 3914.5, 4789.6)
+reference <- c(2.2, 0.7, 2.9, 0.7, 1.0, 0.7, 2.1, 3.1, 0.8, 0.8, 3.2, 2.2, 3.3, 1.1, 0.8, 1.1, 0.9, 0.9, 57.7, 103.7, 
+               166.9, 175.2, 136.8, 144.9, 153.3, 150.1, 158.8, 226.2, 188.5, 186.1, 255.4, 273.6, 546.3, 569.6, 521.0, 
+               617.7, 642.5, 442.1, 462.5, 512.8, 747.5, 563.3, 730.9)
+
+# Combine data into a data frame
+data <- data.frame(Year = years, Change_in_Crop_Pattern = change_in_crop_pattern, Reference = reference)
+
+# Reshape data for plotting
+data_melted <- melt(data, id.vars = "Year")
+
+# Plot the data using a bar graph
+ggplot(data_melted, aes(x = Year, y = value, fill = variable)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Comparison of Scenarios: Change in Crop Pattern vs. Reference",
+       x = "Years",
+       y = "Unmet Demand (MCM)",
+       fill = "Scenario") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12))
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(reshape2)
+library(gridExtra)  # For arranging plots
+library(grid)       # For adding annotations
+
+# Data setup
+years <- 2018:2060
+change_in_crop_pattern <- c(2.2, 22.1, 26.7, 23.0, 23.8, 24.1, 34.7, 46.4, 28.3, 40.3, 71.0, 69.5, 85.8, 112.8, 230.1, 
+                            263.6, 275.1, 299.1, 424.6, 355.4, 505.1, 557.4, 496.5, 543.4, 592.7, 621.5, 694.9, 1086.7, 
+                            924.8, 1085.5, 1777.9, 1954.5, 2362.5, 2562.1, 2548.0, 3000.3, 3244.9, 2681.3, 2935.4, 
+                            3319.2, 4414.4, 3914.5, 4789.6)
+reference <- c(2.2, 0.7, 2.9, 0.7, 1.0, 0.7, 2.1, 3.1, 0.8, 0.8, 3.2, 2.2, 3.3, 1.1, 0.8, 1.1, 0.9, 0.9, 57.7, 103.7, 
+               166.9, 175.2, 136.8, 144.9, 153.3, 150.1, 158.8, 226.2, 188.5, 186.1, 255.4, 273.6, 546.3, 569.6, 521.0, 
+               617.7, 642.5, 442.1, 462.5, 512.8, 747.5, 563.3, 730.9)
+
+# Additional datasets to match the complexity of the shared figure
+# Let's assume these are the additional scenarios (fake data for illustration purposes)
+moderate_temp <- change_in_crop_pattern * 0.9 + 50
+ssp2_4_5 <- change_in_crop_pattern * 1.1 + 100
+ssp5_8_5 <- change_in_crop_pattern * 1.2 + 150
+
+# Combine data into a data frame
+data <- data.frame(Year = years, 
+                   Reference = reference, 
+                   `Change in Crop Pattern` = change_in_crop_pattern,
+                   `Moderate Temp` = moderate_temp,
+                   `SSP2 4.5` = ssp2_4_5,
+                   `SSP5 8.5` = ssp5_8_5)
+
+# Reshape data for plotting
+data_melted <- melt(data, id.vars = "Year")
+
+# Base plot
+p <- ggplot(data_melted, aes(x = Year, y = value, group = variable, color = variable, shape = variable)) + 
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_bar(data = data_melted[data_melted$variable == "Reference",], 
+           aes(x = Year, y = value, fill = variable), 
+           stat = "identity", color = "darkgreen", size = 0.5, alpha = 0.7) +
+  scale_y_continuous(name = "Unmet Demand (MCM)", 
+                     sec.axis = dup_axis(name = "Unmet Demand (MCM)", labels = NULL),
+                     limits = c(0, max(data_melted$value) + 200), 
+                     expand = c(0, 0)) +
+  scale_x_continuous(breaks = seq(2018, 2060, by = 5)) +
+  scale_color_manual(values = c("darkgreen", "purple", "blue", "red", "orange")) +
+  scale_shape_manual(values = c(NA, 17, 19, 24, 21)) +
+  labs(title = "Scenario Comparison with Trend Lines", x = "Year", y = "Unmet Demand (MCM)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_text(color = "darkgreen"),
+        axis.title.y.right = element_text(color = "darkgreen"),
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        legend.position = "top")
+
+# Linear regression to add trend lines and annotations
+fit_change <- lm(change_in_crop_pattern ~ years)
+fit_temp <- lm(moderate_temp ~ years)
+fit_ssp2 <- lm(ssp2_4_5 ~ years)
+fit_ssp5 <- lm(ssp5_8_5 ~ years)
+
+# Add trend lines
+p <- p + geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "black", size = 0.8, linetype = "dashed") +
+  annotate("text", x = 2040, y = 1500, label = paste0("Adj. R²: ", round(summary(fit_change)$adj.r.squared, 3)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1400, label = paste0("Slope: ", round(coef(fit_change)[2], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1300, label = paste0("Intercept: ", round(coef(fit_change)[1], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2040, y = 1200, label = paste0("Adj. R²: ", round(summary(fit_temp)$adj.r.squared, 3)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1100, label = paste0("Slope: ", round(coef(fit_temp)[2], 2)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1000, label = paste0("Intercept: ", round(coef(fit_temp)[1], 2)), 
+           color = "purple", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2040, y = 900, label = paste0("Adj. R²: ", round(summary(fit_ssp2)$adj.r.squared, 3)), 
+           color = "blue", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 800, label = paste0("Slope: ", round(coef(fit_ssp2)[2], 2)), 
+           color = "blue", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 700, label = paste0("Intercept: ", round(coef(fit_ssp2)[1], 2)), 
+           color = "blue", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2040, y = 600, label = paste0("Adj. R²: ", round(summary(fit_ssp5)$adj.r.squared, 3)), 
+           color = "red", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 500, label = paste0("Slope: ", round(coef(fit_ssp5)[2], 2)), 
+           color = "red", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 400, label = paste0("Intercept: ", round(coef(fit_ssp5)[1], 2)), 
+           color = "red", size = 3, hjust = 0)
+
+# Print the plot
+print(p)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries (Bood Graph)
+library(ggplot2)
+library(reshape2)
+library(gridExtra)  # For arranging plots
+library(grid)       # For adding annotations
+
+# Data setup
+years <- 2018:2060
+change_in_crop_pattern <- c(2.2, 22.1, 26.7, 23.0, 23.8, 24.1, 34.7, 46.4, 28.3, 40.3, 71.0, 69.5, 85.8, 112.8, 230.1, 
+                            263.6, 275.1, 299.1, 424.6, 355.4, 505.1, 557.4, 496.5, 543.4, 592.7, 621.5, 694.9, 1086.7, 
+                            924.8, 1085.5, 1777.9, 1954.5, 2362.5, 2562.1, 2548.0, 3000.3, 3244.9, 2681.3, 2935.4, 
+                            3319.2, 4414.4, 3914.5, 4789.6)
+reference <- c(2.2, 0.7, 2.9, 0.7, 1.0, 0.7, 2.1, 3.1, 0.8, 0.8, 3.2, 2.2, 3.3, 1.1, 0.8, 1.1, 0.9, 0.9, 57.7, 103.7, 
+               166.9, 175.2, 136.8, 144.9, 153.3, 150.1, 158.8, 226.2, 188.5, 186.1, 255.4, 273.6, 546.3, 569.6, 521.0, 
+               617.7, 642.5, 442.1, 462.5, 512.8, 747.5, 563.3, 730.9)
+
+# Additional datasets to match the complexity of the shared figure
+# Let's assume these are the additional scenarios (fake data for illustration purposes)
+moderate_temp <- change_in_crop_pattern * 0.9 + 50
+ssp2_4_5 <- change_in_crop_pattern * 1.1 + 100
+ssp5_8_5 <- change_in_crop_pattern * 1.2 + 150
+
+# Combine data into a data frame
+data <- data.frame(Year = years, 
+                   Reference = reference, 
+                   `Change in Crop Pattern` = change_in_crop_pattern,
+                   `Moderate Temp` = moderate_temp,
+                   `SSP2 4.5` = ssp2_4_5,
+                   `SSP5 8.5` = ssp5_8_5)
+
+# Reshape data for plotting
+data_melted <- melt(data, id.vars = "Year")
+
+# Base plot
+p <- ggplot(data_melted, aes(x = Year, y = value, group = variable, color = variable, shape = variable)) + 
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_bar(data = data_melted[data_melted$variable == "Reference",], 
+           aes(x = Year, y = value, fill = variable), 
+           stat = "identity", color = "darkgreen", size = 0.5, alpha = 0.7) +
+  scale_y_continuous(name = "Unmet Demand (MCM)", 
+                     sec.axis = dup_axis(name = "Unmet Demand (MCM)", labels = NULL),
+                     limits = c(0, max(data_melted$value) + 200), 
+                     expand = c(0, 0)) +
+  scale_x_continuous(breaks = seq(2018, 2060, by = 5)) +
+  scale_color_manual(values = c("darkgreen", "purple", "blue", "red", "orange")) +
+  scale_shape_manual(values = c(NA, 17, 19, 24, 21)) +
+  labs(title = "Scenario Comparison with Trend Lines", x = "Year", y = "Unmet Demand (MCM)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_text(color = "darkgreen"),
+        axis.title.y.right = element_text(color = "darkgreen"),
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        legend.position = "left")  # Move legend to the left side
+
+# Linear regression to add trend lines and annotations
+fit_change <- lm(change_in_crop_pattern ~ years)
+fit_temp <- lm(moderate_temp ~ years)
+fit_ssp2 <- lm(ssp2_4_5 ~ years)
+fit_ssp5 <- lm(ssp5_8_5 ~ years)
+
+# Add trend lines
+p <- p + geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "black", size = 0.8, linetype = "dashed") +
+  annotate("text", x = 2040, y = 1500, label = paste0("Adj. R²: ", round(summary(fit_change)$adj.r.squared, 3)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1400, label = paste0("Slope: ", round(coef(fit_change)[2], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1300, label = paste0("Intercept: ", round(coef(fit_change)[1], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2040, y = 1200, label = paste0("Adj. R²: ", round(summary(fit_temp)$adj.r.squared, 3)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1100, label = paste0("Slope: ", round(coef(fit_temp)[2], 2)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 1000, label = paste0("Intercept: ", round(coef(fit_temp)[1], 2)), 
+           color = "purple", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2040, y = 900, label = paste0("Adj. R²: ", round(summary(fit_ssp2)$adj.r.squared, 3)), 
+           color = "blue", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 800, label = paste0("Slope: ", round(coef(fit_ssp2)[2], 2)), 
+           color = "blue", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 700, label = paste0("Intercept: ", round(coef(fit_ssp2)[1], 2)), 
+           color = "blue", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2040, y = 600, label = paste0("Adj. R²: ", round(summary(fit_ssp5)$adj.r.squared, 3)), 
+           color = "red", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 500, label = paste0("Slope: ", round(coef(fit_ssp5)[2], 2)), 
+           color = "red", size = 3, hjust = 0) +
+  annotate("text", x = 2040, y = 400, label = paste0("Intercept: ", round(coef(fit_ssp5)[1], 2)), 
+           color = "red", size = 3, hjust = 0)
+
+# Print the plot
+print(p)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries (Perfect Code)
+library(ggplot2)
+library(reshape2)
+library(gridExtra)  # For arranging plots
+library(grid)       # For adding annotations
+
+# Data setup
+years <- 2018:2060
+change_in_crop_pattern <- c(2.2, 22.1, 26.7, 23.0, 23.8, 24.1, 34.7, 46.4, 28.3, 40.3, 71.0, 69.5, 85.8, 112.8, 230.1, 
+                            263.6, 275.1, 299.1, 424.6, 355.4, 505.1, 557.4, 496.5, 543.4, 592.7, 621.5, 694.9, 1086.7, 
+                            924.8, 1085.5, 1777.9, 1954.5, 2362.5, 2562.1, 2548.0, 3000.3, 3244.9, 2681.3, 2935.4, 
+                            3319.2, 4414.4, 3914.5, 4789.6)
+reference <- c(2.2, 0.7, 2.9, 0.7, 1.0, 0.7, 2.1, 3.1, 0.8, 0.8, 3.2, 2.2, 3.3, 1.1, 0.8, 1.1, 0.9, 0.9, 57.7, 103.7, 
+               166.9, 175.2, 136.8, 144.9, 153.3, 150.1, 158.8, 226.2, 188.5, 186.1, 255.4, 273.6, 546.3, 569.6, 521.0, 
+               617.7, 642.5, 442.1, 462.5, 512.8, 747.5, 563.3, 730.9)
+
+# Additional datasets to match the complexity of the shared figure
+# Let's assume these are the additional scenarios (fake data for illustration purposes)
+moderate_temp <- change_in_crop_pattern * 0.9 + 50
+ssp2_4_5 <- change_in_crop_pattern * 1.1 + 100
+ssp5_8_5 <- change_in_crop_pattern * 1.2 + 150
+
+# Combine data into a data frame
+data <- data.frame(Year = years, 
+                   Reference = reference, 
+                   `Change in Crop Pattern` = change_in_crop_pattern,
+                   `Moderate Temp` = moderate_temp,
+                   `SSP2 4.5` = ssp2_4_5,
+                   `SSP5 8.5` = ssp5_8_5)
+
+# Reshape data for plotting
+data_melted <- melt(data, id.vars = "Year")
+
+# Base plot
+p <- ggplot(data_melted, aes(x = Year, y = value, group = variable, color = variable, shape = variable)) + 
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_bar(data = data_melted[data_melted$variable == "Reference",], 
+           aes(x = Year, y = value, fill = variable), 
+           stat = "identity", color = "darkgreen", size = 0.5, alpha = 0.7) +
+  scale_y_continuous(name = "Unmet Demand (MCM)", 
+                     sec.axis = dup_axis(name = "Unmet Demand (MCM)", labels = NULL),
+                     limits = c(0, max(data_melted$value) + 200), 
+                     expand = c(0, 0)) +
+  scale_x_continuous(breaks = seq(2018, 2060, by = 5)) +
+  scale_color_manual(values = c("darkgreen", "purple", "blue", "red", "orange")) +
+  scale_shape_manual(values = c(NA, 17, 19, 24, 21)) +
+  labs(title = "Scenario Comparison with Trend Lines", x = "Year", y = "Unmet Demand (MCM)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_text(color = "darkgreen"),
+        axis.title.y.right = element_text(color = "darkgreen"),
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        legend.position = "left")  # Move legend to the left
+
+# Linear regression to add trend lines and annotations
+fit_change <- lm(change_in_crop_pattern ~ years)
+fit_temp <- lm(moderate_temp ~ years)
+fit_ssp2 <- lm(ssp2_4_5 ~ years)
+fit_ssp5 <- lm(ssp5_8_5 ~ years)
+
+# Add trend lines
+p <- p + geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "black", size = 0.8, linetype = "dashed") +
+  annotate("text", x = 2025, y = 1500, label = paste0("Adj. R²: ", round(summary(fit_change)$adj.r.squared, 3)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1400, label = paste0("Slope: ", round(coef(fit_change)[2], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1300, label = paste0("Intercept: ", round(coef(fit_change)[1], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2025, y = 1200, label = paste0("Adj. R²: ", round(summary(fit_temp)$adj.r.squared, 3)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1100, label = paste0("Slope: ", round(coef(fit_temp)[2], 2)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1000, label = paste0("Intercept: ", round(coef(fit_temp)[1], 2)), 
+           color = "purple", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2025, y = 900, label = paste0("Adj. R²: ", round(summary(fit_ssp2)$adj.r.squared, 3)), 
+           color = "blue", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 800, label = paste0("Slope: ", round(coef(fit_ssp2)[2], 2)), 
+           color = "blue", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 700, label = paste0("Intercept: ", round(coef(fit_ssp2)[1], 2)), 
+           color = "blue", size = 3, hjust = 0) +
+  
+  annotate("text", x = 2025, y = 600, label = paste0("Adj. R²: ", round(summary(fit_ssp5)$adj.r.squared, 3)), 
+           color = "red", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 500, label = paste0("Slope: ", round(coef(fit_ssp5)[2], 2)), 
+           color = "red", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 400, label = paste0("Intercept: ", round(coef(fit_ssp5)[1], 2)), 
+           color = "red", size = 3, hjust = 0)
+
+# Print the plot
+print(p)
+
+
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(reshape2)
+library(gridExtra)  # For arranging plots
+library(grid)       # For adding annotations
+
+# Data setup
+years <- 2018:2060
+change_in_crop_pattern <- c(2.2, 22.1, 26.7, 23.0, 23.8, 24.1, 34.7, 46.4, 28.3, 40.3, 71.0, 69.5, 85.8, 112.8, 230.1, 
+                            263.6, 275.1, 299.1, 424.6, 355.4, 505.1, 557.4, 496.5, 543.4, 592.7, 621.5, 694.9, 1086.7, 
+                            924.8, 1085.5, 1777.9, 1954.5, 2362.5, 2562.1, 2548.0, 3000.3, 3244.9, 2681.3, 2935.4, 
+                            3319.2, 4414.4, 3914.5, 4789.6)
+reference <- c(2.2, 0.7, 2.9, 0.7, 1.0, 0.7, 2.1, 3.1, 0.8, 0.8, 3.2, 2.2, 3.3, 1.1, 0.8, 1.1, 0.9, 0.9, 57.7, 103.7, 
+               166.9, 175.2, 136.8, 144.9, 153.3, 150.1, 158.8, 226.2, 188.5, 186.1, 255.4, 273.6, 546.3, 569.6, 521.0, 
+               617.7, 642.5, 442.1, 462.5, 512.8, 747.5, 563.3, 730.9)
+
+# Additional datasets to match the complexity of the shared figure
+# Let's assume these are the additional scenarios (fake data for illustration purposes)
+moderate_temp <- change_in_crop_pattern * 0.9 + 50
+
+# Combine data into a data frame
+data <- data.frame(Year = years, 
+                   Reference = reference, 
+                   `Change in Crop Pattern` = change_in_crop_pattern,
+                   `Moderate Temp` = moderate_temp)
+
+# Reshape data for plotting
+data_melted <- melt(data, id.vars = "Year")
+# Base plot
+p <- ggplot(data_melted, aes(x = Year, y = value, group = variable, color = variable, shape = variable)) + 
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_bar(data = data_melted[data_melted$variable == "Reference",], 
+           aes(x = Year, y = value, fill = variable), 
+           stat = "identity", color = "darkgreen", size = 0.5, alpha = 0.7) +
+  scale_y_continuous(name = "Unmet Demand (MCM)", 
+                     sec.axis = dup_axis(name = "Unmet Demand (MCM)", labels = NULL),
+                     limits = c(0, max(data_melted$value) + 200), 
+                     expand = c(0, 0)) +
+  scale_x_continuous(breaks = seq(2018, 2060, by = 5)) +
+  scale_color_manual(values = c("darkgreen", "purple", "blue")) +
+  scale_shape_manual(values = c(21, 17, 19)) +
+  labs(title = "Scenario Comparison with Trend Lines", x = "Year", y = "Unmet Demand (MCM)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_text(color = "darkgreen"),
+        axis.title.y.right = element_text(color = "darkgreen"),
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        legend.position = "left")  # Move legend to the left
+
+# Linear regression to add trend lines and annotations
+fit_change <- lm(change_in_crop_pattern ~ years)
+fit_temp <- lm(moderate_temp ~ years)
+
+# Add trend lines
+p <- p + geom_smooth(data = subset(data_melted, variable == "Change in Crop Pattern"), method = "lm", formula = y ~ x, se = FALSE, color = "black", size = 0.8, linetype = "dashed") +
+  geom_smooth(data = subset(data_melted, variable == "Moderate Temp"), method = "lm", formula = y ~ x, se = FALSE, color = "black", size = 0.8, linetype = "dashed") +
+  annotate("text", x = 2025, y = 1500, label = paste0("Adj. R²: ", round(summary(fit_change)$adj.r.squared, 3)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1400, label = paste0("Slope: ", round(coef(fit_change)[2], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1300, label = paste0("Intercept: ", round(coef(fit_change)[1], 2)), 
+           color = "green4", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1200, label = paste0("Adj. R²: ", round(summary(fit_temp)$adj.r.squared, 3)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1100, label = paste0("Slope: ", round(coef(fit_temp)[2], 2)), 
+           color = "purple", size = 3, hjust = 0) +
+  annotate("text", x = 2025, y = 1000, label = paste0("Intercept: ", round(coef(fit_temp)[1], 2)), 
+           color = "purple", size = 3, hjust = 0)
+
+# Print the plot
+print(p)
